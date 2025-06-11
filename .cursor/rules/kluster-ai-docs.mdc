@@ -1,0 +1,53 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+example requests
+
+from openai import OpenAI
+
+# Configure OpenAI client
+client = OpenAI(
+    base_url="https://api.kluster.ai/v1", 
+    api_key="INSERT_API_KEY" # Replace with your actual API key
+)
+
+chat_completion = client.chat.completions.create(
+    model="klusterai/Meta-Llama-3.1-8B-Instruct-Turbo",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What is the capital of Argentina?"},
+    ],
+)
+
+print(chat_completion.to_dict())
+
+
+example response
+
+{
+    "id": "chat-d187c103e189483485b3bcd3eb899c62",
+    "object": "chat.completion",
+    "created": 1736136422,
+    "model": "klusterai/Meta-Llama-3.1-8B-Instruct-Turbo",
+    "choices": [
+        {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "The capital of Argentina is Buenos Aires.",
+                "tool_calls": []
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null
+        }
+    ],
+    "usage": {
+        "prompt_tokens": 48,
+        "total_tokens": 57,
+        "completion_tokens": 9
+    },
+    "prompt_logprobs": null
+}
