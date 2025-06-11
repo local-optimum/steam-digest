@@ -17,7 +17,7 @@ def post_to_discord(message: str, webhook_url: str) -> bool:
     
     payload = {
         "content": message_with_mention,
-        "username": "Sigma Gaming Summary",
+        "username": "Sigma Gaming News",
         "avatar_url": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg"
     }
     

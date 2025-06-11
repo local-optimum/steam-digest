@@ -2,9 +2,12 @@
 
 import os
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 class Config:
     """Configuration class for Steam Digest Bot."""
@@ -41,11 +44,15 @@ class Config:
         if not self.users_raw:
             return users
             
+        logger.info(f"Raw users string: {self.users_raw}")
         for user_config in self.users_raw.split(','):
+            logger.info(f"Processing user config: {user_config}")
             if ':' in user_config:
                 username, steam_id = user_config.strip().split(':', 1)
                 users[username.strip()] = steam_id.strip()
+                logger.info(f"Added user: {username.strip()} with steam_id: {steam_id.strip()}")
         
+        logger.info(f"Final parsed users: {users}")
         return users
 
 # Global configuration instance
