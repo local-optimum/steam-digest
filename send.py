@@ -12,9 +12,12 @@ def post_to_discord(message: str, webhook_url: str) -> bool:
         logger.error("Message or webhook URL is empty")
         return False
     
+    # Prepend user mention to the message
+    message_with_mention = f"<@&1061692252981837885> {message}"
+    
     payload = {
-        "content": message,
-        "username": "Steam Digest Bot",
+        "content": message_with_mention,
+        "username": "Sigma Gaming Summary",
         "avatar_url": "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg"
     }
     
