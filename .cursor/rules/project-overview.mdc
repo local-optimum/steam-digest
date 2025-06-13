@@ -1,5 +1,201 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+**Steam Activity Digest Bot – Project Overview**
+
+**Objective**
+Create a lightweight Python application that fetches daily Steam activity for a small group of friends, summarizes the day’s gaming session into a short, human-readable update using an AI model via Kluster.ai (via OpenRouter), and posts that summary to a Discord channel once per day. The application runs automatically using scheduled cloud hosting (Render).
+
+---
+
+**Scope & Features**
+
+1. **Steam Activity Tracking**
+
+   * Uses the Steam Web API to retrieve user activity.
+   * Gathers per-user data: games played, playtime, and achievements earned.
+   * Configured via SteamID64 for each user.
+
+2. **Snapshot Management & Diffing**
+
+   * Daily snapshots are stored as JSON files named `today.json` and `yesterday.json` for each user.
+   * A snapshot includes:
+
+     ```json
+     {
+       "games": {
+         "Deep Rock Galactic": {
+           "playtime_forever": 1234,
+           "achievements": ["Cave Cleaner", "Rock and Stone!"]
+         },
+         "Hades": {
+           "playtime_forever": 234,
+           "achievements": ["First Blood"]
+         }
+       }
+     }
+     ```
+   * The app compares today’s and yesterday’s snapshots for each user to compute:
+
+     * **Games played** yesterday (based on `playtime_forever` delta)
+     * **Achievements earned** (set difference of achievements lists)
+     * **Total time played**
+     * **Games played together** (if multiple users played the same game on the same day)
+     * **Most played game** (by cumulative time)
+     * **Longest session** (single game by one user with largest time delta)
+     * **New games** (titles appearing in today but not yesterday)
+     * **Play streaks** (basic counter incremented if user played any game)
+
+3. **AI-Powered Summary Generation**
+
+   * Uses **Kluster.ai** through OpenRouter to convert structured stats into a natural-language Discord-ready message.
+   * Prompt includes:
+
+     ```python
+     SYSTEM_PROMPT = "You are a friendly assistant summarizing daily gaming activity."
+     USER_PROMPT = "Here is the structured activity data: {stats_json}. Write a Discord-friendly summary."
+     ```
+   * Example output:
+
+     ```text
+     🎮 Yesterday, Oliver and Sam spent 90 minutes in *Deep Rock Galactic* while Jamie soloed *Hades*. Oliver earned the “Rock and Stone!” badge. Looks like co-op mining was the vibe!
+     ```
+
+4. **Discord Integration**
+
+   * Posts the summary to a Discord channel using a webhook.
+   * Sends a simple `POST` request with a JSON body:
+
+     ```python
+     { "content": summary }
+     ```
+
+5. **Cloud Deployment (Render)**
+
+   * Hosted on Render as a scheduled job.
+   * One job runs once per day (e.g. 23:59 UTC).
+   * `.env` secrets and user config are managed via the Render dashboard.
+
+---
+
+**Environment Setup (.env)**
+
+```env
+STEAM_API_KEY=your_steam_api_key
+KLUSTER_API_KEY=your_kluster_api_key
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your_webhook_id
+USERS=oliver:7656119XXXXXXXXXX,jamie:7656119YYYYYYYYYY,sam:7656119ZZZZZZZZZZ
+```
+
+---
+
+**File Structure**
+
+```
+steam_digest_bot/
+├── main.py            # Orchestrates the daily task
+├── fetch.py           # Steam API integration
+├── diff.py            # Snapshot comparison logic
+├── summarise.py       # AI summary generation
+├── send.py            # Discord webhook posting
+├── config.py          # Loads .env and parses user info
+├── snapshots/         # Stores yesterday.json and today.json
+├── requirements.txt   # Python dependencies
+└── README.md
+```
+
+---
+
+**Code Snippets**
+
+*Steam API Fetching (fetch.py)*:
+
+```python
+import requests
+
+def get_recent_games(steam_id, api_key):
+    url = f"https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/?key={api_key}&steamid={steam_id}"
+    return requests.get(url).json()
+
+def get_achievements(steam_id, app_id, api_key):
+    url = f"https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/?key={api_key}&steamid={steam_id}&appid={app_id}"
+    return requests.get(url).json()
+```
+
+*Snapshot Diffing (diff.py)*:
+
+```python
+def calculate_daily_diff(yesterday, today):
+    result = {}
+    for user in today:
+        result[user] = {
+            "played": {},
+            "achievements": {},
+            "total_minutes": 0,
+            "new_games": [],
+        }
+        for game in today[user]['games']:
+            y_game = yesterday[user]['games'].get(game, {})
+            minutes_today = today[user]['games'][game]['playtime_forever']
+            minutes_yesterday = y_game.get('playtime_forever', 0)
+            delta = minutes_today - minutes_yesterday
+            if delta > 0:
+                result[user]['played'][game] = delta
+                result[user]['total_minutes'] += delta
+                y_ach = set(y_game.get('achievements', []))
+                t_ach = set(today[user]['games'][game].get('achievements', []))
+                new_ach = list(t_ach - y_ach)
+                if new_ach:
+                    result[user]['achievements'][game] = new_ach
+            if game not in yesterday[user]['games']:
+                result[user]['new_games'].append(game)
+    return result
+```
+
+*AI Summary Generation (summarise.py)*:
+
+```python
+import requests
+
+def generate_summary(data, api_key):
+    headers = {"Authorization": f"Bearer {api_key}"}
+    payload = {
+        "model": "openrouter/kluster",
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": USER_PROMPT.format(stats_json=data)}
+        ]
+    }
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers)
+    return response.json()['choices'][0]['message']['content']
+```
+
+*Discord Webhook (send.py)*:
+
+```python
+import requests
+
+def post_to_discord(message, webhook_url):
+    requests.post(webhook_url, json={"content": message})
+```
+
+---
+
+**Dependencies (requirements.txt)**
+
+```
+requests
+python-dotenv
+```
+
+---
+
+**Result**
+The final bot will:
+
+* Automatically collect and compare daily Steam activity
+* Use Kluster.ai via OpenRouter to generate a natural-language summary
+* Push the update to a Discord channel via webhook
+* Run entirely on Render via a scheduled job with no manual intervention

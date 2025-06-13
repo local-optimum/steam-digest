@@ -32,9 +32,25 @@ jobs:
       id: cache-snapshots
       with:
         path: snapshots
-        key: ${{ runner.os }}-snapshots-${{ github.ref }}
+        key: ${{ runner.os }}-snapshots-${{ github.ref }}-${{ github.run_number }}
         restore-keys: |
+          ${{ runner.os }}-snapshots-${{ github.ref }}-
           ${{ runner.os }}-snapshots-
+    
+    - name: Debug - List snapshots before run
+      run: |
+        echo "Contents of snapshots directory before run:"
+        ls -la snapshots/
+        if [ -f snapshots/today.json ]; then
+          echo "today.json exists"
+          echo "First few lines of today.json:"
+          head -n 5 snapshots/today.json
+        fi
+        if [ -f snapshots/yesterday.json ]; then
+          echo "yesterday.json exists"
+          echo "First few lines of yesterday.json:"
+          head -n 5 snapshots/yesterday.json
+        fi
     
     - name: Run Steam Digest
       env:
@@ -42,4 +58,28 @@ jobs:
         KLUSTER_API_KEY: ${{ secrets.KLUSTER_API_KEY }}
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         USERS: ${{ secrets.USERS }}
-      run: python main.py 
+      run: python main.py
+    
+    - name: Debug - List snapshots after run
+      run: |
+        echo "Contents of snapshots directory after run:"
+        ls -la snapshots/
+        if [ -f snapshots/today.json ]; then
+          echo "today.json exists"
+          echo "First few lines of today.json:"
+          head -n 5 snapshots/today.json
+        fi
+        if [ -f snapshots/yesterday.json ]; then
+          echo "yesterday.json exists"
+          echo "First few lines of yesterday.json:"
+          head -n 5 snapshots/yesterday.json
+        fi
+    
+    - name: Save cache
+      uses: actions/cache@v3
+      with:
+        path: snapshots
+        key: ${{ runner.os }}-snapshots-${{ github.ref }}-${{ github.run_number }}
+        restore-keys: |
+          ${{ runner.os }}-snapshots-${{ github.ref }}-
+          ${{ runner.os }}-snapshots- 

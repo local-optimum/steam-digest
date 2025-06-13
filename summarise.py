@@ -85,7 +85,7 @@ def generate_fallback_summary(report: Dict) -> str:
     if not report['has_activity']:
         return "🎮 No gaming activity detected today."
     
-    parts = ["<@1061692252981837885> 🎮 **Daily Gaming Digest**"]
+    parts = ["🎮 **Daily Gaming Digest**"]
     
     # Individual activity
     individual_stats = report['individual_stats']

@@ -40,15 +40,36 @@ def setup_snapshots():
 def rotate_snapshots(today_file: str, yesterday_file: str):
     """Rotate today's snapshot to yesterday's for the next run."""
     try:
+        logger.info(f"Starting snapshot rotation...")
+        logger.info(f"Checking for today's snapshot at: {today_file}")
+        
         if os.path.exists(today_file):
+            logger.info("Found today's snapshot")
             if os.path.exists(yesterday_file):
+                logger.info(f"Removing old yesterday's snapshot: {yesterday_file}")
                 os.remove(yesterday_file)
+            logger.info(f"Moving today's snapshot to yesterday's: {today_file} -> {yesterday_file}")
             shutil.move(today_file, yesterday_file)
-            logger.info("Rotated today's snapshot to yesterday's")
+            logger.info("Successfully rotated today's snapshot to yesterday's")
         else:
-            logger.warning("No today snapshot found to rotate")
+            logger.warning(f"No today snapshot found at {today_file} to rotate")
+            
+        # Log the state of files after rotation
+        logger.info("File state after rotation:")
+        if os.path.exists(today_file):
+            logger.info(f"today.json exists at {today_file}")
+        else:
+            logger.info("today.json does not exist")
+        if os.path.exists(yesterday_file):
+            logger.info(f"yesterday.json exists at {yesterday_file}")
+        else:
+            logger.info("yesterday.json does not exist")
+            
     except Exception as e:
         logger.error(f"Error rotating snapshots: {e}")
+        # Log the full exception details
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
 
 def main():
     """Main execution function."""
