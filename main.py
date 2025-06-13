@@ -79,14 +79,22 @@ def main():
         # Setup file paths
         today_file, yesterday_file = setup_snapshots()
         
-        # Rotate previous snapshots
-        rotate_snapshots(today_file, yesterday_file)
-        
         # Load yesterday's snapshot (for comparison)
         logger.info("Loading yesterday's snapshot...")
         yesterday_snapshot = load_snapshot(yesterday_file)
         
-        # Fetch today's snapshot
+        # Load today's snapshot (for comparison)
+        logger.info("Loading today's snapshot...")
+        today_snapshot = load_snapshot(today_file)
+        
+        # Generate daily report from existing snapshots
+        logger.info("Generating daily activity report...")
+        daily_report = generate_daily_report(today_snapshot, yesterday_snapshot)
+        
+        # Rotate previous snapshots
+        rotate_snapshots(today_file, yesterday_file)
+        
+        # Fetch new today's snapshot
         logger.info("Fetching today's Steam activity...")
         today_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key)
         
@@ -96,10 +104,6 @@ def main():
         
         # Save today's snapshot
         save_snapshot(today_snapshot, today_file)
-        
-        # Generate daily report
-        logger.info("Generating daily activity report...")
-        daily_report = generate_daily_report(today_snapshot, yesterday_snapshot)
         
         # Generate AI summary
         logger.info("Generating AI summary...")
