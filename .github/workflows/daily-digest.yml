@@ -32,9 +32,8 @@ jobs:
       id: cache-snapshots
       with:
         path: snapshots
-        key: ${{ runner.os }}-snapshots-${{ github.ref }}-${{ github.run_number }}
+        key: ${{ runner.os }}-snapshots-main
         restore-keys: |
-          ${{ runner.os }}-snapshots-${{ github.ref }}-
           ${{ runner.os }}-snapshots-
     
     - name: Debug - List snapshots before run
@@ -79,7 +78,6 @@ jobs:
       uses: actions/cache@v3
       with:
         path: snapshots
-        key: ${{ runner.os }}-snapshots-${{ github.ref }}-${{ github.run_number }}
+        key: ${{ runner.os }}-snapshots-main
         restore-keys: |
-          ${{ runner.os }}-snapshots-${{ github.ref }}-
           ${{ runner.os }}-snapshots- 
