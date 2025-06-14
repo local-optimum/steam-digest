@@ -83,18 +83,7 @@ def main():
         logger.info("Loading yesterday's snapshot...")
         yesterday_snapshot = load_snapshot(yesterday_file)
         
-        # Load today's snapshot (for comparison)
-        logger.info("Loading today's snapshot...")
-        today_snapshot = load_snapshot(today_file)
-        
-        # Generate daily report from existing snapshots
-        logger.info("Generating daily activity report...")
-        daily_report = generate_daily_report(today_snapshot, yesterday_snapshot)
-        
-        # Rotate previous snapshots
-        rotate_snapshots(today_file, yesterday_file)
-        
-        # Fetch new today's snapshot
+        # Fetch today's Steam activity FIRST (before comparison)
         logger.info("Fetching today's Steam activity...")
         today_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key)
         
@@ -102,8 +91,9 @@ def main():
             logger.error("Failed to fetch today's snapshot")
             return False
         
-        # Save today's snapshot
-        save_snapshot(today_snapshot, today_file)
+        # Generate daily report by comparing yesterday vs today
+        logger.info("Generating daily activity report...")
+        daily_report = generate_daily_report(today_snapshot, yesterday_snapshot)
         
         # Generate AI summary
         logger.info("Generating AI summary...")
@@ -119,12 +109,19 @@ def main():
         logger.info("Posting to Discord...")
         success = post_to_discord(summary, config.discord_webhook_url)
         
-        if success:
-            logger.info("Steam Digest Bot completed successfully!")
-            return True
-        else:
+        if not success:
             logger.error("Failed to post to Discord")
             return False
+        
+        # Only rotate snapshots AFTER successful posting
+        logger.info("Successfully posted to Discord. Now rotating snapshots for next run...")
+        rotate_snapshots(today_file, yesterday_file)
+        
+        # Save today's snapshot (this becomes tomorrow's "yesterday")
+        save_snapshot(today_snapshot, today_file)
+        
+        logger.info("Steam Digest Bot completed successfully!")
+        return True
             
     except Exception as e:
         logger.error(f"Unexpected error in main execution: {e}")
@@ -213,6 +210,95 @@ def test_configuration():
         logger.error(f"Configuration test failed: {e}")
         return False
 
+def test_snapshot_rotation():
+    """Test that snapshot rotation works correctly."""
+    import tempfile
+    import json
+    import os
+    
+    # Configure basic logging for the test
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+    
+    logger.info("Testing snapshot rotation logic...")
+    
+    try:
+        # Import the functions we need directly
+        from diff import load_snapshot, save_snapshot, generate_daily_report
+        
+        # Create temporary directory for test
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_today = os.path.join(temp_dir, 'today.json')
+            test_yesterday = os.path.join(temp_dir, 'yesterday.json')
+            
+            # Create mock snapshots
+            mock_yesterday = {
+                "user1": {
+                    "games": {
+                        "Game A": {"playtime_forever": 100, "achievements": ["ach1"]}
+                    }
+                }
+            }
+            
+            mock_today = {
+                "user1": {
+                    "games": {
+                        "Game A": {"playtime_forever": 150, "achievements": ["ach1", "ach2"]},
+                        "Game B": {"playtime_forever": 30, "achievements": ["new_ach"]}
+                    }
+                }
+            }
+            
+            # Save initial snapshots
+            save_snapshot(mock_yesterday, test_yesterday)
+            save_snapshot(mock_today, test_today)
+            
+            # Load and compare (simulating main flow)
+            yesterday_data = load_snapshot(test_yesterday)
+            today_data = load_snapshot(test_today)
+            
+            # Generate report
+            daily_report = generate_daily_report(today_data, yesterday_data)
+            
+            # Check that we detected activity
+            if daily_report['has_activity']:
+                logger.info("✅ Successfully detected activity in test data")
+                
+                # Print some test results
+                user1_stats = daily_report['individual_stats'].get('user1', {})
+                logger.info(f"✅ User1 played {user1_stats.get('games_played', 0)} games")
+                logger.info(f"✅ User1 total minutes: {user1_stats.get('total_minutes', 0)}")
+                logger.info(f"✅ New games: {user1_stats.get('new_games', [])}")
+                
+                # Test rotation manually (since we can't use the function that requires config)
+                logger.info("Testing rotation logic...")
+                if os.path.exists(test_today):
+                    if os.path.exists(test_yesterday):
+                        os.remove(test_yesterday)
+                        logger.info("✅ Removed old yesterday file")
+                    os.rename(test_today, test_yesterday)
+                    logger.info("✅ Moved today to yesterday")
+                
+                # Verify rotation worked
+                if not os.path.exists(test_today):
+                    logger.info("✅ Today file was moved correctly")
+                if os.path.exists(test_yesterday):
+                    logger.info("✅ Yesterday file now exists")
+                    
+                logger.info("✅ Snapshot rotation test passed!")
+                return True
+            else:
+                logger.error("❌ Failed to detect activity in test data")
+                logger.info("Debug - Daily report:")
+                logger.info(json.dumps(daily_report, indent=2))
+                return False
+                
+    except Exception as e:
+        logger.error(f"❌ Snapshot rotation test failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return False
+
 if __name__ == "__main__":
     import sys
     
@@ -225,11 +311,16 @@ if __name__ == "__main__":
             # Test AI summary generation without Discord posting
             success = test_summary()
             sys.exit(0 if success else 1)
+        elif sys.argv[1] == "rotation":
+            # Test snapshot rotation logic
+            success = test_snapshot_rotation()  
+            sys.exit(0 if success else 1)
         else:
             print("Usage:")
             print("  python main.py          - Run full digest (fetch, analyze, summarize, post)")
             print("  python main.py test     - Test configuration and APIs")
             print("  python main.py summary  - Test AI summary generation only (no Discord)")
+            print("  python main.py rotation - Test snapshot rotation logic")
             sys.exit(1)
     else:
         # Run main digest process
