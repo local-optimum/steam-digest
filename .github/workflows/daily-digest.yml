@@ -40,15 +40,12 @@ jobs:
       run: |
         echo "Contents of snapshots directory before run:"
         ls -la snapshots/
-        if [ -f snapshots/today.json ]; then
-          echo "today.json exists"
-          echo "First few lines of today.json:"
-          head -n 5 snapshots/today.json
-        fi
-        if [ -f snapshots/yesterday.json ]; then
-          echo "yesterday.json exists"
-          echo "First few lines of yesterday.json:"
-          head -n 5 snapshots/yesterday.json
+        if [ -f snapshots/snapshot.json ]; then
+          echo "snapshot.json exists"
+          echo "First few lines of snapshot.json:"
+          head -n 5 snapshots/snapshot.json
+        else
+          echo "No previous snapshot found (first run)"
         fi
     
     - name: Run Steam Digest
@@ -63,13 +60,10 @@ jobs:
       run: |
         echo "Contents of snapshots directory after run:"
         ls -la snapshots/
-        if [ -f snapshots/today.json ]; then
-          echo "today.json exists"
-          echo "First few lines of today.json:"
-          head -n 5 snapshots/today.json
-        fi
-        if [ -f snapshots/yesterday.json ]; then
-          echo "yesterday.json exists"
-          echo "First few lines of yesterday.json:"
-          head -n 5 snapshots/yesterday.json
+        if [ -f snapshots/snapshot.json ]; then
+          echo "snapshot.json exists"
+          echo "First few lines of snapshot.json:"
+          head -n 5 snapshots/snapshot.json
+        else
+          echo "No snapshot saved (this shouldn't happen)"
         fi 

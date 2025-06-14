@@ -30,51 +30,42 @@ def save_snapshot(snapshot: Dict, filepath: str) -> None:
     except Exception as e:
         logger.error(f"Error saving snapshot to {filepath}: {e}")
 
-def calculate_daily_diff(yesterday: Dict, today: Dict) -> Dict:
+def calculate_daily_diff(previous: Dict, current: Dict) -> Dict:
     """Calculate the daily difference between two snapshots."""
     result = {}
     
-    # If there's no previous snapshot, we can't calculate daily differences
-    if not yesterday:
-        logger.info("No previous snapshot available - cannot calculate daily differences")
-        # Return empty results for all users
-        for username in today:
-            result[username] = {
-                'played': {},           # game_name -> minutes_played_today
-                'achievements': {},     # game_name -> [new_achievements]
-                'total_minutes': 0,     # total minutes played today
-                'new_games': [],        # games not in yesterday's snapshot
-                'games_played': 0,      # number of different games played
-            }
-        return result
-    
-    # Process each user in today's snapshot
-    for username in today:
-        if username not in today:
+    # Process each user in current snapshot
+    for username in current:
+        if username not in current:
             continue
             
         result[username] = {
-            'played': {},           # game_name -> minutes_played_today
+            'played': {},           # game_name -> minutes_played_since_last_run
             'achievements': {},     # game_name -> [new_achievements]
-            'total_minutes': 0,     # total minutes played today
-            'new_games': [],        # games not in yesterday's snapshot
+            'total_minutes': 0,     # total minutes played since last run
+            'new_games': [],        # games not in previous snapshot
             'games_played': 0,      # number of different games played
         }
         
-        today_user = today[username]
-        yesterday_user = yesterday.get(username, {})
+        current_user = current[username]
+        previous_user = previous.get(username, {})
         
-        today_games = today_user.get('games', {})
-        yesterday_games = yesterday_user.get('games', {})
+        current_games = current_user.get('games', {})
+        previous_games = previous_user.get('games', {})
         
-        for game_name, game_data in today_games.items():
+        for game_name, game_data in current_games.items():
             # Get playtime data
-            today_playtime = game_data.get('playtime_forever', 0)
-            yesterday_game = yesterday_games.get(game_name, {})
-            yesterday_playtime = yesterday_game.get('playtime_forever', 0)
+            current_playtime = game_data.get('playtime_forever', 0)
+            previous_game = previous_games.get(game_name, {})
+            previous_playtime = previous_game.get('playtime_forever', 0)
             
-            # Calculate time played today
-            time_delta = today_playtime - yesterday_playtime
+            # Calculate time played since last run
+            time_delta = current_playtime - previous_playtime
+            
+            # If there's no previous snapshot, use 2-week activity as recent activity indicator
+            if not previous and game_data.get('playtime_2weeks', 0) > 0:
+                time_delta = game_data.get('playtime_2weeks', 0)
+                logger.info(f"First run: Using 2-week activity for {username}/{game_name}: {time_delta} minutes")
             
             # Only count activity if we have a positive time difference
             if time_delta > 0:
@@ -82,16 +73,16 @@ def calculate_daily_diff(yesterday: Dict, today: Dict) -> Dict:
                 result[username]['total_minutes'] += time_delta
                 result[username]['games_played'] += 1
                 
-                # Check for new achievements
-                today_achievements = set(game_data.get('achievements', []))
-                yesterday_achievements = set(yesterday_game.get('achievements', []))
-                new_achievements = list(today_achievements - yesterday_achievements)
+                # Check for new achievements (on first run, show all achievements as "new")
+                current_achievements = set(game_data.get('achievements', []))
+                previous_achievements = set(previous_game.get('achievements', []))
+                new_achievements = list(current_achievements - previous_achievements)
                 
                 if new_achievements:
                     result[username]['achievements'][game_name] = new_achievements
             
-            # Check if this is a new game
-            if game_name not in yesterday_games:
+            # Check if this is a new game (on first run, all games are "new")
+            if game_name not in previous_games:
                 result[username]['new_games'].append(game_name)
     
     return result
@@ -176,9 +167,9 @@ def calculate_group_stats(daily_diff: Dict) -> Dict:
     
     return stats
 
-def generate_daily_report(today_snapshot: Dict, yesterday_snapshot: Dict) -> Dict:
+def generate_daily_report(current_snapshot: Dict, previous_snapshot: Dict) -> Dict:
     """Generate a complete daily activity report."""
-    daily_diff = calculate_daily_diff(yesterday_snapshot, today_snapshot)
+    daily_diff = calculate_daily_diff(previous_snapshot, current_snapshot)
     group_stats = calculate_group_stats(daily_diff)
     
     return {

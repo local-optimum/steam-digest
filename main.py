@@ -2,7 +2,6 @@
 
 import os
 import logging
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -28,82 +27,47 @@ logging.getLogger('requests').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def setup_snapshots():
-    """Ensure snapshot directory and files exist."""
+    """Ensure snapshot directory and file exist."""
     snapshots_dir = Path('snapshots')
     snapshots_dir.mkdir(exist_ok=True)
     
-    today_file = snapshots_dir / 'today.json'
-    yesterday_file = snapshots_dir / 'yesterday.json'
+    snapshot_file = snapshots_dir / 'snapshot.json'
     
-    return str(today_file), str(yesterday_file)
-
-def rotate_snapshots(today_file: str, yesterday_file: str):
-    """Rotate today's snapshot to yesterday's for the next run."""
-    try:
-        logger.info(f"Starting snapshot rotation...")
-        logger.info(f"Checking for today's snapshot at: {today_file}")
-        
-        if os.path.exists(today_file):
-            logger.info("Found today's snapshot")
-            if os.path.exists(yesterday_file):
-                logger.info(f"Removing old yesterday's snapshot: {yesterday_file}")
-                os.remove(yesterday_file)
-            logger.info(f"Moving today's snapshot to yesterday's: {today_file} -> {yesterday_file}")
-            shutil.move(today_file, yesterday_file)
-            logger.info("Successfully rotated today's snapshot to yesterday's")
-        else:
-            logger.warning(f"No today snapshot found at {today_file} to rotate")
-            
-        # Log the state of files after rotation
-        logger.info("File state after rotation:")
-        if os.path.exists(today_file):
-            logger.info(f"today.json exists at {today_file}")
-        else:
-            logger.info("today.json does not exist")
-        if os.path.exists(yesterday_file):
-            logger.info(f"yesterday.json exists at {yesterday_file}")
-        else:
-            logger.info("yesterday.json does not exist")
-            
-    except Exception as e:
-        logger.error(f"Error rotating snapshots: {e}")
-        # Log the full exception details
-        import traceback
-        logger.error(f"Full traceback: {traceback.format_exc()}")
+    return str(snapshot_file)
 
 def main():
     """Main execution function."""
     try:
         logger.info("Starting Steam Digest Bot...")
         
-        # Setup file paths
-        today_file, yesterday_file = setup_snapshots()
+        # Setup file path - just one snapshot file
+        snapshot_file = setup_snapshots()
         
-        # Load yesterday's snapshot (for comparison)
-        logger.info("Loading yesterday's snapshot...")
-        yesterday_snapshot = load_snapshot(yesterday_file)
+        # Load previous snapshot from cache (empty on first run)
+        logger.info("Loading previous snapshot...")
+        previous_snapshot = load_snapshot(snapshot_file)
         
-        if yesterday_snapshot:
-            logger.info(f"✅ Found yesterday's snapshot with {len(yesterday_snapshot)} users")
-            # Log some basic stats about yesterday's data
-            for username, user_data in yesterday_snapshot.items():
+        if previous_snapshot:
+            logger.info(f"✅ Found previous snapshot with {len(previous_snapshot)} users")
+            # Log some basic stats about previous data
+            for username, user_data in previous_snapshot.items():
                 game_count = len(user_data.get('games', {}))
-                logger.info(f"  - {username}: {game_count} games in yesterday's snapshot")
+                logger.info(f"  - {username}: {game_count} games in previous snapshot")
         else:
-            logger.warning("⚠️  No yesterday's snapshot found - this will be treated as first run")
-            logger.warning("⚠️  All activity will be ignored since we can't calculate daily differences")
+            logger.info("ℹ️  No previous snapshot found - this is the first run")
+            logger.info("ℹ️  Will report recent activity since there's no baseline to compare against")
         
-        # Fetch today's Steam activity FIRST (before comparison)
-        logger.info("Fetching today's Steam activity...")
-        today_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key)
+        # Fetch current Steam activity
+        logger.info("Fetching current Steam activity...")
+        current_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key)
         
-        if not today_snapshot:
-            logger.error("Failed to fetch today's snapshot")
+        if not current_snapshot:
+            logger.error("Failed to fetch current snapshot")
             return False
         
-        # Generate daily report by comparing yesterday vs today
+        # Generate daily report by comparing current vs previous
         logger.info("Generating daily activity report...")
-        daily_report = generate_daily_report(today_snapshot, yesterday_snapshot)
+        daily_report = generate_daily_report(current_snapshot, previous_snapshot)
         
         # Log what we found
         if daily_report['has_activity']:
@@ -118,7 +82,7 @@ def main():
                 achievements = sum(len(achs) for achs in user_stats['achievements'].values())
                 logger.info(f"  - {username}: {user_minutes}min across {games_played} games, {new_games} new games, {achievements} achievements")
         else:
-            logger.info("ℹ️  No activity detected (this is normal if no one played games since yesterday)")
+            logger.info("ℹ️  No activity detected (this is normal if no one played games since last run)")
         
         # Generate AI summary
         logger.info("Generating AI summary...")
@@ -138,12 +102,9 @@ def main():
             logger.error("Failed to post to Discord")
             return False
         
-        # Only rotate snapshots AFTER successful posting
-        logger.info("Successfully posted to Discord. Now rotating snapshots for next run...")
-        rotate_snapshots(today_file, yesterday_file)
-        
-        # Save today's snapshot (this becomes tomorrow's "yesterday")
-        save_snapshot(today_snapshot, today_file)
+        # Save current snapshot as the new baseline for next run
+        logger.info("Saving current snapshot for next run...")
+        save_snapshot(current_snapshot, snapshot_file)
         
         logger.info("Steam Digest Bot completed successfully!")
         return True
@@ -157,26 +118,26 @@ def test_summary():
     try:
         logger.info("Testing AI summary generation...")
         
-        # Setup file paths
-        today_file, yesterday_file = setup_snapshots()
+        # Setup file path
+        snapshot_file = setup_snapshots()
         
-        # Load snapshots (create dummy data if needed)
-        yesterday_snapshot = load_snapshot(yesterday_file)
+        # Load previous snapshot
+        previous_snapshot = load_snapshot(snapshot_file)
         
-        # Fetch today's snapshot (optimized for recent activity + achievements)
+        # Fetch current snapshot (optimized for recent activity + achievements)
         logger.info("Fetching recent Steam activity (optimized approach with achievements)...")
-        today_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key, fetch_achievements=True)
+        current_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key, fetch_achievements=True)
         
-        if not today_snapshot:
-            logger.error("Failed to fetch today's snapshot")
+        if not current_snapshot:
+            logger.error("Failed to fetch current snapshot")
             return False
         
-        # Save today's snapshot for future reference
-        save_snapshot(today_snapshot, today_file)
+        # Save current snapshot for future reference
+        save_snapshot(current_snapshot, snapshot_file)
         
         # Generate daily report
         logger.info("Generating daily activity report...")
-        daily_report = generate_daily_report(today_snapshot, yesterday_snapshot)
+        daily_report = generate_daily_report(current_snapshot, previous_snapshot)
         
         # Generate AI summary
         logger.info("Generating AI summary...")
