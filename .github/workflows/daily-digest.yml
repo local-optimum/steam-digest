@@ -32,7 +32,7 @@ jobs:
       id: cache-snapshots
       with:
         path: snapshots
-        key: ${{ runner.os }}-snapshots-main
+        key: ${{ runner.os }}-snapshots-${{ github.run_number }}
         restore-keys: |
           ${{ runner.os }}-snapshots-
     
@@ -72,12 +72,4 @@ jobs:
           echo "yesterday.json exists"
           echo "First few lines of yesterday.json:"
           head -n 5 snapshots/yesterday.json
-        fi
-    
-    - name: Save cache
-      uses: actions/cache@v3
-      with:
-        path: snapshots
-        key: ${{ runner.os }}-snapshots-main
-        restore-keys: |
-          ${{ runner.os }}-snapshots- 
+        fi 

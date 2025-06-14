@@ -34,6 +34,20 @@ def calculate_daily_diff(yesterday: Dict, today: Dict) -> Dict:
     """Calculate the daily difference between two snapshots."""
     result = {}
     
+    # If there's no previous snapshot, we can't calculate daily differences
+    if not yesterday:
+        logger.info("No previous snapshot available - cannot calculate daily differences")
+        # Return empty results for all users
+        for username in today:
+            result[username] = {
+                'played': {},           # game_name -> minutes_played_today
+                'achievements': {},     # game_name -> [new_achievements]
+                'total_minutes': 0,     # total minutes played today
+                'new_games': [],        # games not in yesterday's snapshot
+                'games_played': 0,      # number of different games played
+            }
+        return result
+    
     # Process each user in today's snapshot
     for username in today:
         if username not in today:
@@ -59,14 +73,10 @@ def calculate_daily_diff(yesterday: Dict, today: Dict) -> Dict:
             yesterday_game = yesterday_games.get(game_name, {})
             yesterday_playtime = yesterday_game.get('playtime_forever', 0)
             
-            # Calculate time played today (prefer 2-week data if available for more recent activity)
-            playtime_2weeks = game_data.get('playtime_2weeks', 0)
+            # Calculate time played today
             time_delta = today_playtime - yesterday_playtime
             
-            # If we have 2-week data and no yesterday snapshot, use recent activity as indicator
-            if not yesterday_games and playtime_2weeks > 0:
-                time_delta = playtime_2weeks  # Use 2-week playtime as recent activity indicator
-            
+            # Only count activity if we have a positive time difference
             if time_delta > 0:
                 result[username]['played'][game_name] = time_delta
                 result[username]['total_minutes'] += time_delta

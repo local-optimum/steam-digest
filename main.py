@@ -83,6 +83,16 @@ def main():
         logger.info("Loading yesterday's snapshot...")
         yesterday_snapshot = load_snapshot(yesterday_file)
         
+        if yesterday_snapshot:
+            logger.info(f"✅ Found yesterday's snapshot with {len(yesterday_snapshot)} users")
+            # Log some basic stats about yesterday's data
+            for username, user_data in yesterday_snapshot.items():
+                game_count = len(user_data.get('games', {}))
+                logger.info(f"  - {username}: {game_count} games in yesterday's snapshot")
+        else:
+            logger.warning("⚠️  No yesterday's snapshot found - this will be treated as first run")
+            logger.warning("⚠️  All activity will be ignored since we can't calculate daily differences")
+        
         # Fetch today's Steam activity FIRST (before comparison)
         logger.info("Fetching today's Steam activity...")
         today_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key)
@@ -94,6 +104,21 @@ def main():
         # Generate daily report by comparing yesterday vs today
         logger.info("Generating daily activity report...")
         daily_report = generate_daily_report(today_snapshot, yesterday_snapshot)
+        
+        # Log what we found
+        if daily_report['has_activity']:
+            logger.info(f"✅ Activity detected!")
+            total_group_minutes = daily_report['group_stats']['total_group_minutes']
+            logger.info(f"  - Total group activity: {total_group_minutes} minutes")
+            
+            for username, user_stats in daily_report['individual_stats'].items():
+                user_minutes = user_stats['total_minutes']
+                games_played = user_stats['games_played']
+                new_games = len(user_stats['new_games'])
+                achievements = sum(len(achs) for achs in user_stats['achievements'].values())
+                logger.info(f"  - {username}: {user_minutes}min across {games_played} games, {new_games} new games, {achievements} achievements")
+        else:
+            logger.info("ℹ️  No activity detected (this is normal if no one played games since yesterday)")
         
         # Generate AI summary
         logger.info("Generating AI summary...")
