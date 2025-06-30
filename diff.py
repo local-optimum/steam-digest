@@ -89,14 +89,12 @@ def calculate_group_stats(daily_diff: Dict) -> Dict:
         'most_played_game': None,
         'games_played_together': [],
         'longest_session': None,
-        'total_achievements': 0,
         'new_games_discovered': []
     }
     
     # Track all games played by any user
     all_games_played = {}
     user_totals = {}
-    all_achievements = 0
     all_new_games = set()
     
     for username, user_data in daily_diff['individual_stats'].items():
@@ -110,6 +108,9 @@ def calculate_group_stats(daily_diff: Dict) -> Dict:
                 all_games_played[game_name] = {'players': [], 'total_minutes': 0}
             all_games_played[game_name]['players'].append(username)
             all_games_played[game_name]['total_minutes'] += minutes
+            
+        # Track new games
+        all_new_games.update(user_data['new_games'])
     
     # Find most active player
     if user_totals:
@@ -138,7 +139,7 @@ def calculate_group_stats(daily_diff: Dict) -> Dict:
     # Find longest single session
     longest_session = None
     longest_minutes = 0
-    for username, user_data in daily_diff.items():
+    for username, user_data in daily_diff['individual_stats'].items():
         for game_name, minutes in user_data['played'].items():
             if minutes > longest_minutes:
                 longest_minutes = minutes
@@ -149,7 +150,6 @@ def calculate_group_stats(daily_diff: Dict) -> Dict:
                 }
     stats['longest_session'] = longest_session
     
-    stats['total_achievements'] = all_achievements
     stats['new_games_discovered'] = list(all_new_games)
     
     return stats
@@ -160,10 +160,7 @@ def generate_daily_report(current_snapshot: Dict, previous_snapshot: Dict) -> Di
     group_stats = calculate_group_stats(daily_diff)
     
     return {
-        'individual_stats': daily_diff,
+        'individual_stats': daily_diff['individual_stats'],
         'group_stats': group_stats,
-        'has_activity': any(
-            user_data['total_minutes'] > 0 
-            for user_data in daily_diff.values()
-        )
+        'has_activity': daily_diff['has_activity']
     } 
