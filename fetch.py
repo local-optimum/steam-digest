@@ -112,12 +112,12 @@ def fetch_user_snapshot(username: str, steam_id: str, api_key: str) -> Dict:
     
     return snapshot
 
-def fetch_all_users_snapshot(users: Dict[str, str], api_key: str, fetch_achievements: bool = True) -> Dict:
+def fetch_all_users_snapshot(users: Dict[str, str], api_key: str) -> Dict:
     """Fetch snapshots for all configured users."""
     all_snapshots = {}
     
     for username, steam_id in users.items():
-        snapshot = fetch_user_snapshot(username, steam_id, api_key, fetch_achievements)
+        snapshot = fetch_user_snapshot(username, steam_id, api_key)
         all_snapshots[username] = snapshot
     
     return all_snapshots 

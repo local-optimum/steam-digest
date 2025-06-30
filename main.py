@@ -79,8 +79,7 @@ def main():
                 user_minutes = user_stats['total_minutes']
                 games_played = user_stats['games_played']
                 new_games = len(user_stats['new_games'])
-                achievements = sum(len(achs) for achs in user_stats['achievements'].values())
-                logger.info(f"  - {username}: {user_minutes}min across {games_played} games, {new_games} new games, {achievements} achievements")
+                logger.info(f"  - {username}: {user_minutes}min across {games_played} games, {new_games} new games")
         else:
             logger.info("ℹ️  No activity detected (this is normal if no one played games since last run)")
         
@@ -124,9 +123,9 @@ def test_summary():
         # Load previous snapshot
         previous_snapshot = load_snapshot(snapshot_file)
         
-        # Fetch current snapshot (optimized for recent activity + achievements)
-        logger.info("Fetching recent Steam activity (optimized approach with achievements)...")
-        current_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key, fetch_achievements=True)
+        # Fetch current snapshot
+        logger.info("Fetching recent Steam activity...")
+        current_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key)
         
         if not current_snapshot:
             logger.error("Failed to fetch current snapshot")
