@@ -65,9 +65,9 @@ def get_achievements(steam_id: str, app_id: str, api_key: str) -> Optional[Dict]
             logger.warning(f"Error fetching achievements for {steam_id}, app {app_id}: {e}")
         return None
 
-def fetch_user_snapshot(username: str, steam_id: str, api_key: str, fetch_achievements: bool = True) -> Dict:
-    """Fetch a snapshot of user's recent gaming activity (optimized for daily digest)."""
-    logger.info(f"Fetching recent activity snapshot for user: {username}")
+def fetch_user_snapshot(username: str, steam_id: str, api_key: str) -> Dict:
+    """Fetch a snapshot of user's gaming activity."""
+    logger.info(f"Fetching activity snapshot for user: {username}")
     
     snapshot = {
         'username': username,
@@ -75,70 +75,41 @@ def fetch_user_snapshot(username: str, steam_id: str, api_key: str, fetch_achiev
         'games': {}
     }
     
-    # First, get recently played games (last 2 weeks)
+    # First, get all owned games (complete library)
+    owned_games_data = get_owned_games(steam_id, api_key)
+    if not owned_games_data or 'response' not in owned_games_data:
+        logger.error(f"Failed to fetch owned games for {username}")
+        return snapshot
+        
+    owned_games = owned_games_data['response'].get('games', [])
+    logger.info(f"Found {len(owned_games)} owned games for {username}")
+    
+    # Get recently played games for supplementary data
     recent_games_data = get_recent_games(steam_id, api_key)
     recent_games = {}
+    if recent_games_data and 'response' in recent_games_data:
+        for game in recent_games_data['response'].get('games', []):
+            recent_games[str(game['appid'])] = game
     
-    if recent_games_data and 'response' in recent_games_data and 'games' in recent_games_data['response']:
-        recent_games_list = recent_games_data['response']['games']
-        logger.info(f"Found {len(recent_games_list)} recently played games for {username}")
+    # Process all owned games
+    for game in owned_games:
+        app_id = str(game['appid'])
+        name = game.get('name', f"App {app_id}")
         
-        # Create a lookup for recent games with their playtime
-        for game in recent_games_list:
-            app_id = str(game['appid'])
-            recent_games[app_id] = {
-                'name': game.get('name', f'Unknown Game {app_id}'),
-                'playtime_2weeks': game.get('playtime_2weeks', 0),
-                'playtime_forever': game.get('playtime_forever', 0)
-            }
-    else:
-        logger.info(f"No recent games found for {username}, falling back to owned games")
-        # Fallback: get all owned games but limit to those with recent activity
-        owned_games_data = get_owned_games(steam_id, api_key)
-        if owned_games_data and 'response' in owned_games_data:
-            games = owned_games_data['response'].get('games', [])
-            # Only include games with significant playtime (> 30 minutes total) to focus on active games
-            for game in games:
-                if game.get('playtime_forever', 0) > 30:
-                    app_id = str(game['appid'])
-                    recent_games[app_id] = {
-                        'name': game.get('name', f'Unknown Game {app_id}'),
-                        'playtime_2weeks': 0,  # We don't have 2-week data from owned games
-                        'playtime_forever': game.get('playtime_forever', 0)
-                    }
-    
-    if not recent_games:
-        logger.warning(f"No games found for {username}")
-        return snapshot
-    
-    logger.info(f"Processing {len(recent_games)} relevant games for {username}")
-    
-    # Process each game
-    for i, (app_id, game_data) in enumerate(recent_games.items()):
-        game_name = game_data['name']
-        
-        if i % 5 == 0:  # Progress indicator every 5 games (since we have fewer games now)
-            logger.info(f"Processing game {i+1}/{len(recent_games)} for {username}: {game_name}")
-        
-        snapshot['games'][game_name] = {
+        # Base game data
+        game_data = {
             'app_id': app_id,
-            'playtime_forever': game_data['playtime_forever'],
-            'playtime_2weeks': game_data.get('playtime_2weeks', 0),
-            'achievements': []
+            'playtime_forever': game.get('playtime_forever', 0),
+            'playtime_2weeks': 0  # Default to 0 if not recently played
         }
         
-        # Fetch achievements only for games with recent activity or significant playtime
-        if fetch_achievements and (game_data.get('playtime_2weeks', 0) > 0 or game_data['playtime_forever'] > 60):
-            achievements_data = get_achievements(steam_id, app_id, api_key)
-            if achievements_data and 'playerstats' in achievements_data:
-                if 'achievements' in achievements_data['playerstats']:
-                    achieved = [
-                        ach['apiname'] for ach in achievements_data['playerstats']['achievements']
-                        if ach.get('achieved', 0) == 1
-                    ]
-                    snapshot['games'][game_name]['achievements'] = achieved
+        # Add recent activity data if available
+        if app_id in recent_games:
+            recent_game = recent_games[app_id]
+            game_data['playtime_2weeks'] = recent_game.get('playtime_2weeks', 0)
+        
+        snapshot['games'][name] = game_data
     
-    logger.info(f"Completed optimized snapshot for {username}: {len(snapshot['games'])} games")
     return snapshot
 
 def fetch_all_users_snapshot(users: Dict[str, str], api_key: str, fetch_achievements: bool = True) -> Dict:

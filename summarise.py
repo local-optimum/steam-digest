@@ -27,7 +27,7 @@ def format_report_for_ai(report: Dict) -> str:
     # Create a structured summary of the data
     summary_data = {
         'individual_activity': {},
-        'group_highlights': report['group_stats']
+        'group_highlights': {}
     }
     
     # Format individual user activity
@@ -36,11 +36,11 @@ def format_report_for_ai(report: Dict) -> str:
             summary_data['individual_activity'][username] = {
                 'total_minutes': user_data['total_minutes'],
                 'games_played': dict(user_data['played']),
-                'achievements_earned': user_data['achievements'],
                 'new_games': user_data['new_games'],
-                'games_count': user_data['games_played']
+                'first_time_played': user_data['first_time_played']
             }
     
+    # Convert to JSON for consistent formatting
     return json.dumps(summary_data, indent=2)
 
 def generate_summary(report: Dict, api_key: str) -> str:
@@ -115,7 +115,11 @@ def generate_fallback_summary(report: Dict) -> str:
     if group_stats['total_achievements'] > 0:
         parts.append(f"**Achievements Unlocked:** {group_stats['total_achievements']}")
     
-    if group_stats['new_games_discovered']:
-        parts.append(f"**New Games Tried:** {', '.join(group_stats['new_games_discovered'])}")
+    # Add new games and first time played games
+    for username, user_data in individual_stats.items():
+        if user_data['new_games']:
+            parts.append(f"**{username}'s New Games:** {', '.join(user_data['new_games'])}")
+        if user_data['first_time_played']:
+            parts.append(f"**{username} Tried for First Time:** {', '.join(user_data['first_time_played'])}")
     
     return "\n".join(parts) 

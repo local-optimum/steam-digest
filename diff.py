@@ -32,58 +32,52 @@ def save_snapshot(snapshot: Dict, filepath: str) -> None:
 
 def calculate_daily_diff(previous: Dict, current: Dict) -> Dict:
     """Calculate the daily difference between two snapshots."""
-    result = {}
+    result = {
+        'has_activity': False,  # Will be set to True if any user has activity
+        'individual_stats': {}
+    }
     
     # Process each user in current snapshot
     for username in current:
-        if username not in current:
+        if username not in previous:
             continue
             
-        result[username] = {
+        result['individual_stats'][username] = {
             'played': {},           # game_name -> minutes_played_since_last_run
-            'achievements': {},     # game_name -> [new_achievements]
             'total_minutes': 0,     # total minutes played since last run
-            'new_games': [],        # games not in previous snapshot
+            'new_games': [],        # games not in previous snapshot (newly owned)
+            'first_time_played': [], # games played for the first time
             'games_played': 0,      # number of different games played
         }
         
         current_user = current[username]
-        previous_user = previous.get(username, {})
-        
+        previous_user = previous[username]
         current_games = current_user.get('games', {})
         previous_games = previous_user.get('games', {})
         
+        # Process each game in current snapshot
         for game_name, game_data in current_games.items():
-            # Get playtime data
-            current_playtime = game_data.get('playtime_forever', 0)
+            # Get previous game data if it exists
             previous_game = previous_games.get(game_name, {})
-            previous_playtime = previous_game.get('playtime_forever', 0)
             
             # Calculate time played since last run
+            current_playtime = game_data.get('playtime_forever', 0)
+            previous_playtime = previous_game.get('playtime_forever', 0)
             time_delta = current_playtime - previous_playtime
             
-            # If there's no previous snapshot, use 2-week activity as recent activity indicator
-            if not previous and game_data.get('playtime_2weeks', 0) > 0:
-                time_delta = game_data.get('playtime_2weeks', 0)
-                logger.info(f"First run: Using 2-week activity for {username}/{game_name}: {time_delta} minutes")
-            
-            # Only count activity if we have a positive time difference
             if time_delta > 0:
-                result[username]['played'][game_name] = time_delta
-                result[username]['total_minutes'] += time_delta
-                result[username]['games_played'] += 1
+                result['individual_stats'][username]['played'][game_name] = time_delta
+                result['individual_stats'][username]['total_minutes'] += time_delta
+                result['individual_stats'][username]['games_played'] += 1
+                result['has_activity'] = True
                 
-                # Check for new achievements (on first run, show all achievements as "new")
-                current_achievements = set(game_data.get('achievements', []))
-                previous_achievements = set(previous_game.get('achievements', []))
-                new_achievements = list(current_achievements - previous_achievements)
-                
-                if new_achievements:
-                    result[username]['achievements'][game_name] = new_achievements
+                # If game existed but had no playtime, it's a first-time play
+                if game_name in previous_games and previous_playtime == 0:
+                    result['individual_stats'][username]['first_time_played'].append(game_name)
             
-            # Check if this is a new game (on first run, all games are "new")
+            # Check if this is a new game (not in previous snapshot)
             if game_name not in previous_games:
-                result[username]['new_games'].append(game_name)
+                result['individual_stats'][username]['new_games'].append(game_name)
     
     return result
 
@@ -105,17 +99,10 @@ def calculate_group_stats(daily_diff: Dict) -> Dict:
     all_achievements = 0
     all_new_games = set()
     
-    for username, user_data in daily_diff.items():
+    for username, user_data in daily_diff['individual_stats'].items():
         user_total = user_data['total_minutes']
         user_totals[username] = user_total
         stats['total_group_minutes'] += user_total
-        
-        # Count achievements
-        for game_achievements in user_data['achievements'].values():
-            all_achievements += len(game_achievements)
-        
-        # Track new games
-        all_new_games.update(user_data['new_games'])
         
         # Track games played by each user
         for game_name, minutes in user_data['played'].items():

@@ -15,6 +15,10 @@ All notable changes to the Steam Activity Digest Bot project will be documented 
 - Optimized activity tracking to focus on recent activity rather than lifetime totals
 - Improved performance by reducing unnecessary API calls
 - Enhanced daily digest relevance by focusing on current session data
+- Removed achievement tracking to significantly improve performance and reliability
+- Optimized API calls to only fetch essential game data
+- Updated diff calculation to better handle new games vs first-time plays
+- Improved error handling and logging
 
 ### Fixed
 - Achievement fetching issues for games
