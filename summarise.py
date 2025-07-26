@@ -112,9 +112,6 @@ def generate_fallback_summary(report: Dict) -> str:
         coop_games = [game['name'] for game in group_stats['games_played_together']]
         parts.append(f"**Co-op Games:** {', '.join(coop_games)}")
     
-    if group_stats['total_achievements'] > 0:
-        parts.append(f"**Achievements Unlocked:** {group_stats['total_achievements']}")
-    
     # Add new games and first time played games
     for username, user_data in individual_stats.items():
         if user_data['new_games']:
