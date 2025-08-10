@@ -51,7 +51,7 @@ jobs:
     - name: Run Steam Digest
       env:
         STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
-        KLUSTER_API_KEY: ${{ secrets.KLUSTER_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         USERS: ${{ secrets.USERS }}
       run: python main.py
