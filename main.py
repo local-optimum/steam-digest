@@ -85,7 +85,7 @@ def main():
         
         # Generate AI summary
         logger.info("Generating AI summary...")
-        summary = generate_summary(daily_report, config.kluster_api_key)
+        summary = generate_summary(daily_report, config.gemini_api_key)
         
         if not summary:
             logger.error("Failed to generate summary")
@@ -140,7 +140,7 @@ def test_summary():
         
         # Generate AI summary
         logger.info("Generating AI summary...")
-        summary = generate_summary(daily_report, config.kluster_api_key)
+        summary = generate_summary(daily_report, config.gemini_api_key)
         
         if summary:
             print("\n" + "="*60)
