@@ -1,9 +1,10 @@
-"""AI summary generation using Kluster.ai."""
+"""AI summary generation using Google's Gemini."""
 
 import json
 import logging
 from typing import Dict
-from openai import OpenAI
+import google.generativeai as genai
+from google.generativeai import types
 
 logger = logging.getLogger(__name__)
 
@@ -44,37 +45,42 @@ def format_report_for_ai(report: Dict) -> str:
     return json.dumps(summary_data, indent=2)
 
 def generate_summary(report: Dict, api_key: str) -> str:
-    """Generate a natural language summary using Kluster.ai."""
+    """Generate a natural language summary using Google's Gemini."""
     if not report['has_activity']:
         return "🎮 No gaming activity detected today. Everyone must be taking a break! 🛋️"
     
     formatted_data = format_report_for_ai(report)
     
     try:
-        logger.info("Generating AI summary with Kluster.ai...")
+        logger.info("Generating AI summary with Gemini...")
         
-        # Configure Kluster.ai client
-        client = OpenAI(
-            base_url="https://api.kluster.ai/v1", 
-            api_key=api_key
+        # Configure Gemini client
+        genai.configure(api_key=api_key)
+        
+        # Create the model client
+        model = genai.GenerativeModel('gemini-pro')
+        
+        # Prepare the chat
+        chat = model.start_chat(history=[])
+        
+        # Send the prompts
+        response = chat.send_message(
+            f"{SYSTEM_PROMPT}\n\nHere is today's gaming activity data. Please create a fun Discord-friendly summary:\n\n{formatted_data}",
+            generation_config=types.GenerateContentConfig(
+                temperature=0.7,
+                candidate_count=1,
+                max_output_tokens=500,
+                top_p=1,
+                top_k=40,
+            )
         )
         
-        chat_completion = client.chat.completions.create(
-            model="klusterai/Meta-Llama-3.1-8B-Instruct-Turbo",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Here is today's gaming activity data. Please create a fun Discord-friendly summary:\n\n{formatted_data}"}
-            ],
-            max_tokens=500,
-            temperature=0.7
-        )
-        
-        if chat_completion.choices and len(chat_completion.choices) > 0:
-            summary = chat_completion.choices[0].message.content.strip()
+        if response.text:
+            summary = response.text.strip()
             logger.info("AI summary generated successfully")
             return summary
         else:
-            logger.error("No choices returned from Kluster.ai")
+            logger.error("No response text returned from Gemini")
             return generate_fallback_summary(report)
             
     except Exception as e:

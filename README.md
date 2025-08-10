@@ -1,12 +1,12 @@
 # Steam Activity Digest Bot
 
-A lightweight Python application that fetches daily Steam activity for a small group of friends, summarizes the day's gaming session into a short, human-readable update using AI via Kluster.ai (OpenRouter), and posts that summary to a Discord channel once per day.
+A lightweight Python application that fetches daily Steam activity for a small group of friends, summarizes the day's gaming session into a short, human-readable update using Google's Gemini AI, and posts that summary to a Discord channel once per day.
 
 ## Features
 
 - **Steam Activity Tracking**: Uses Steam Web API to retrieve user activity, games played, and recent playtime
 - **Single-Snapshot Management**: Simplified snapshot system using one file for efficient activity comparison
-- **AI-Powered Summaries**: Natural language summaries generated via Kluster.ai through OpenRouter
+- **AI-Powered Summaries**: Natural language summaries generated using Google's Gemini AI
 - **Discord Integration**: Automated posting to Discord via webhooks
 - **GitHub Actions Deployment**: Automated daily execution with persistent snapshot caching
 - **Optimized Performance**: Focuses on recent activity for more relevant daily digests
@@ -17,7 +17,7 @@ A lightweight Python application that fetches daily Steam activity for a small g
 2. Install dependencies: `pip install -r requirements.txt`
 3. Copy `env.example` to `.env` and fill in your API keys:
    - `STEAM_API_KEY`: Your Steam Web API key
-   - `KLUSTER_API_KEY`: Your Kluster.ai API key via OpenRouter
+   - `GEMINI_API_KEY`: Your Google Gemini API key
    - `DISCORD_WEBHOOK_URL`: Your Discord webhook URL
    - `USERS`: Comma-separated list of `username:steamid64` pairs
 4. Test your setup: `python main.py test`
@@ -28,7 +28,7 @@ A lightweight Python application that fetches daily Steam activity for a small g
 
 The application uses environment variables for configuration. See `.env.example` for required variables:
 - `STEAM_API_KEY`: Steam Web API key
-- `KLUSTER_API_KEY`: Kluster.ai API key via OpenRouter
+- `GEMINI_API_KEY`: Google Gemini API key
 - `DISCORD_WEBHOOK_URL`: Discord webhook URL
 - `USERS`: Comma-separated list of `username:steamid64` pairs (e.g., `alice:76561198000000000,bob:76561198000000001`)
 

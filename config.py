@@ -14,7 +14,7 @@ class Config:
     
     def __init__(self):
         self.steam_api_key = os.getenv('STEAM_API_KEY')
-        self.kluster_api_key = os.getenv('KLUSTER_API_KEY')
+        self.gemini_api_key = os.getenv('GEMINI_API_KEY')
         self.discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
         self.users_raw = os.getenv('USERS', '')
         
@@ -28,7 +28,7 @@ class Config:
         """Validate that all required environment variables are set."""
         required_vars = [
             ('STEAM_API_KEY', self.steam_api_key),
-            ('KLUSTER_API_KEY', self.kluster_api_key),
+            ('GEMINI_API_KEY', self.gemini_api_key),
             ('DISCORD_WEBHOOK_URL', self.discord_webhook_url),
             ('USERS', self.users_raw)
         ]
