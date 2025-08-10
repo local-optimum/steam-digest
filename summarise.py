@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Dict
 import google.generativeai as genai
-from google.generativeai import types
+from google.generativeai.types import GenerationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +66,12 @@ def generate_summary(report: Dict, api_key: str) -> str:
         # Send the prompts
         response = chat.send_message(
             f"{SYSTEM_PROMPT}\n\nHere is today's gaming activity data. Please create a fun Discord-friendly summary:\n\n{formatted_data}",
-            generation_config=types.GenerateContentConfig(
+            generation_config=GenerationConfig(
                 temperature=0.7,
                 candidate_count=1,
                 max_output_tokens=500,
                 top_p=1,
-                top_k=40,
+                top_k=40
             )
         )
         
