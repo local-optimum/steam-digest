@@ -148,28 +148,34 @@ def generate_fallback_summary(report: Dict) -> str:
 def create_image_prompt(text_summary: str, report: Dict) -> str:
     """Create an image generation prompt based on the text summary and activity data."""
     
-    # Extract active players from the report
-    active_players = [user for user, data in report['individual_stats'].items() if data['total_minutes'] > 0]
-    
     # Build character descriptions for active players
     character_descriptions = []
-    for player in active_players:
-        if player in CHARACTER_DESCRIPTIONS:
+    for player, data in report['individual_stats'].items():
+        if data['total_minutes'] > 0 and player in CHARACTER_DESCRIPTIONS:
             character_descriptions.append(f"{player} is {CHARACTER_DESCRIPTIONS[player]}")
     
-    # Extract games mentioned in the summary or from the report
-    games_played = set()
-    for user_data in report['individual_stats'].values():
-        games_played.update(user_data['played'].keys())
+    # Create game-specific scenes based on who played what
+    game_scenes = []
+    for player, data in report['individual_stats'].items():
+        if data['total_minutes'] > 0:
+            for game, minutes in data['played'].items():
+                game_scenes.append(f"{player} in {game}")
     
-    # Check for collaborative gaming
-    group_games = []
+    # Check for collaborative gaming scenes
+    group_scenes = []
     if report['group_stats']['games_played_together']:
-        group_games = [game['name'] for game in report['group_stats']['games_played_together']]
+        for game_info in report['group_stats']['games_played_together']:
+            # Find who played this game
+            players_in_game = []
+            for player, data in report['individual_stats'].items():
+                if game_info['name'] in data['played']:
+                    players_in_game.append(player)
+            if len(players_in_game) > 1:
+                group_scenes.append(f"{', '.join(players_in_game)} together in {game_info['name']}")
     
     # Build the image prompt
     prompt_parts = [
-        "Create a fun, cartoon-style gaming montage illustration showing:",
+        "Create an epic action movie montage showing multiple cinematic scenes based on the games being played:",
         ""
     ]
     
@@ -181,26 +187,29 @@ def create_image_prompt(text_summary: str, report: Dict) -> str:
             ""
         ])
     
-    # Add gaming context
-    if games_played:
+    # Add individual game scenes
+    if game_scenes:
         prompt_parts.extend([
-            f"The characters are playing these games: {', '.join(games_played)}",
+            "Action Scenes to Include:",
+            *[f"- Epic scene: {scene}, showing the character as a heroic legend in that game's world" for scene in game_scenes[:6]],  # Limit to avoid overly long prompts
             ""
         ])
     
-    # Highlight collaborative gaming
-    if group_games:
+    # Highlight collaborative scenes
+    if group_scenes:
         prompt_parts.extend([
-            f"Especially highlight that they're playing {', '.join(group_games)} together - show them collaborating or having fun together in the game world.",
+            "Team-Up Scenes:",
+            *[f"- {scene}, working as legendary heroes with perfect coordination" for scene in group_scenes],
             ""
         ])
     
     # Style instructions
     prompt_parts.extend([
-        "Style: Colorful, energetic cartoon/anime style with gaming elements like controllers, screens, game UI elements, and references to the specific games being played.",
-        "Make it feel celebratory and fun, capturing the excitement of gaming with friends.",
-        "Include gaming-related visual elements like headsets, RGB lighting, multiple monitors, or game-specific imagery.",
-        "The overall mood should be positive and energetic, showing the joy of gaming together."
+        "Style: Action movie montage with multiple dynamic scenes, cinematic lighting, and heroic poses.",
+        "Each scene should authentically represent the specific game world with recognizable elements, environments, and visual style.",
+        "Show the characters as cool, heroic versions of themselves, maintaining their friendship while looking legendary.",
+        "Use dramatic lighting, particle effects, and dynamic composition to make each scene feel epic and larger-than-life.",
+        "The overall mood: friends who are legendary heroes having the ultimate gaming adventure across multiple worlds."
     ])
     
     return "\n".join(prompt_parts)

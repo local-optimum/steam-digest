@@ -26,36 +26,39 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 def create_mock_report_with_activity():
-    """Create a mock report with gaming activity for testing."""
+    """Create a mock report with racing games activity for testing."""
     return {
         'has_activity': True,
         'individual_stats': {
             'DonkFresh': {
-                'total_minutes': 125, 
-                'played': {'Deep Rock Galactic': 90, 'Terraria': 35}, 
+                'total_minutes': 90, 
+                'played': {'Trackmania': 60, 'Dakar Desert Rally': 30}, 
                 'new_games': [], 
                 'first_time_played': [],
                 'games_played': 2
             },
             'BoxFresh': {
-                'total_minutes': 90, 
-                'played': {'Deep Rock Galactic': 90}, 
-                'new_games': ['Deep Rock Galactic'], 
-                'first_time_played': ['Deep Rock Galactic'],
-                'games_played': 1
+                'total_minutes': 120, 
+                'played': {'Trackmania': 90, 'Dakar Desert Rally': 30}, 
+                'new_games': [], 
+                'first_time_played': [],
+                'games_played': 2
             },
             'ViralNinja': {
-                'total_minutes': 60,
-                'played': {'Hades': 60},
-                'new_games': [],
-                'first_time_played': [],
+                'total_minutes': 75,
+                'played': {'Dakar Desert Rally': 75},
+                'new_games': ['Dakar Desert Rally'],
+                'first_time_played': ['Dakar Desert Rally'],
                 'games_played': 1
             }
         },
         'group_stats': {
-            'total_group_minutes': 275,
-            'most_played_game': {'name': 'Deep Rock Galactic', 'minutes': 180},
-            'games_played_together': [{'name': 'Deep Rock Galactic', 'minutes': 180}]
+            'total_group_minutes': 285,
+            'most_played_game': {'name': 'Trackmania', 'minutes': 150},
+            'games_played_together': [
+                {'name': 'Trackmania', 'minutes': 150},
+                {'name': 'Dakar Desert Rally', 'minutes': 135}
+            ]
         }
     }
 
@@ -81,7 +84,7 @@ def test_image_prompt_generation():
     
     # Test with activity
     mock_report = create_mock_report_with_activity()
-    mock_summary = "🎮 Yesterday was epic! DonkFresh and BoxFresh teamed up for some intense Deep Rock Galactic mining action, spending 3 hours underground together. Meanwhile, ViralNinja was solo grinding through Hades for an hour. BoxFresh tried Deep Rock Galactic for the first time and loved it! Rock and Stone, brothers! ⛏️"
+    mock_summary = "🏎️ Epic racing day! DonkFresh dominated both Trackmania (60 mins) and Dakar Desert Rally (30 mins), while BoxFresh crushed Trackmania for 90 minutes and tackled the desert for 30 more. ViralNinja spent 75 minutes conquering Dakar Desert Rally for the first time! All three legends tearing up the tracks together! 🏁"
     
     image_prompt = create_image_prompt(mock_summary, mock_report)
     
