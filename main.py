@@ -8,8 +8,8 @@ from pathlib import Path
 from config import config
 from fetch import fetch_all_users_snapshot
 from diff import load_snapshot, save_snapshot, generate_daily_report
-from summarise import generate_summary
-from send import post_to_discord
+from summarise import generate_summary_with_image, generate_summary
+from send import post_to_discord_with_image
 
 # Set up logging
 logging.basicConfig(
@@ -83,19 +83,23 @@ def main():
         else:
             logger.info("ℹ️  No activity detected (this is normal if no one played games since last run)")
         
-        # Generate AI summary
-        logger.info("Generating AI summary...")
-        summary = generate_summary(daily_report, config.gemini_api_key)
+        # Generate AI summary and image
+        logger.info("Generating AI summary and image...")
+        summary, image_data = generate_summary_with_image(daily_report, config.gemini_api_key)
         
         if not summary:
             logger.error("Failed to generate summary")
             return False
         
         logger.info(f"Generated summary: {summary}")
+        if image_data:
+            logger.info(f"Generated image: {len(image_data)} bytes")
+        else:
+            logger.warning("No image was generated")
         
-        # Post to Discord
+        # Post to Discord with text and image
         logger.info("Posting to Discord...")
-        success = post_to_discord(summary, config.discord_webhook_url)
+        success = post_to_discord_with_image(summary, config.discord_webhook_url, image_data)
         
         if not success:
             logger.error("Failed to post to Discord")
@@ -156,6 +160,62 @@ def test_summary():
             
     except Exception as e:
         logger.error(f"Unexpected error in summary test: {e}")
+        return False
+
+def test_summary_with_image():
+    """Test AI summary and image generation without posting to Discord."""
+    try:
+        logger.info("Testing AI summary and image generation...")
+        
+        # Setup file path
+        snapshot_file = setup_snapshots()
+        
+        # Load previous snapshot
+        previous_snapshot = load_snapshot(snapshot_file)
+        
+        # Fetch current snapshot
+        logger.info("Fetching recent Steam activity...")
+        current_snapshot = fetch_all_users_snapshot(config.users, config.steam_api_key)
+        
+        if not current_snapshot:
+            logger.error("Failed to fetch current snapshot")
+            return False
+        
+        # Save current snapshot for future reference
+        save_snapshot(current_snapshot, snapshot_file)
+        
+        # Generate daily report
+        logger.info("Generating daily activity report...")
+        daily_report = generate_daily_report(current_snapshot, previous_snapshot)
+        
+        # Generate AI summary and image
+        logger.info("Generating AI summary and image...")
+        summary, image_data = generate_summary_with_image(daily_report, config.gemini_api_key)
+        
+        if summary:
+            print("\n" + "="*60)
+            print("🎮 GENERATED SUMMARY:")
+            print("="*60)
+            print(summary)
+            print("="*60)
+            
+            if image_data:
+                print(f"🖼️ GENERATED IMAGE: {len(image_data)} bytes")
+                # Optionally save the image for manual inspection
+                with open('test_generated_image.png', 'wb') as f:
+                    f.write(image_data)
+                print("💾 Image saved as 'test_generated_image.png' for inspection")
+            else:
+                print("⚠️ No image was generated")
+            
+            logger.info("AI summary and image test completed successfully!")
+            return True
+        else:
+            logger.error("Failed to generate summary")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Unexpected error in summary and image test: {e}")
         return False
 
 def test_configuration():
@@ -296,6 +356,10 @@ if __name__ == "__main__":
             # Test AI summary generation without Discord posting
             success = test_summary()
             sys.exit(0 if success else 1)
+        elif sys.argv[1] == "image":
+            # Test AI summary and image generation without Discord posting
+            success = test_summary_with_image()
+            sys.exit(0 if success else 1)
         elif sys.argv[1] == "rotation":
             # Test snapshot rotation logic
             success = test_snapshot_rotation()  
@@ -305,6 +369,7 @@ if __name__ == "__main__":
             print("  python main.py          - Run full digest (fetch, analyze, summarize, post)")
             print("  python main.py test     - Test configuration and APIs")
             print("  python main.py summary  - Test AI summary generation only (no Discord)")
+            print("  python main.py image    - Test AI summary and image generation (no Discord)")
             print("  python main.py rotation - Test snapshot rotation logic")
             sys.exit(1)
     else:

@@ -3,13 +3,22 @@
 import json
 import logging
 import os
-from typing import Dict
+import requests
+import base64
+from typing import Dict, Optional, Tuple
 # Import the load_dotenv function
 from dotenv import load_dotenv
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 
 logger = logging.getLogger(__name__)
+
+# Character descriptions for image generation
+CHARACTER_DESCRIPTIONS = {
+    "DonkFresh": "a young skinny guy with a heavy metal t-shirt and long curly hair",
+    "BoxFresh": "a muscular British guy who wears cargo joggers and has a short beard", 
+    "ViralNinja": "a wide British guy with a gamer hoodie and glasses"
+}
 
 # The system prompt remains the same, it's excellent!
 SYSTEM_PROMPT = """You are a top gaming streamer that summarizes daily gaming activity for a group of sigma friends. 
@@ -136,6 +145,136 @@ def generate_fallback_summary(report: Dict) -> str:
     
     return "\n".join(parts)
 
+def create_image_prompt(text_summary: str, report: Dict) -> str:
+    """Create an image generation prompt based on the text summary and activity data."""
+    
+    # Extract active players from the report
+    active_players = [user for user, data in report['individual_stats'].items() if data['total_minutes'] > 0]
+    
+    # Build character descriptions for active players
+    character_descriptions = []
+    for player in active_players:
+        if player in CHARACTER_DESCRIPTIONS:
+            character_descriptions.append(f"{player} is {CHARACTER_DESCRIPTIONS[player]}")
+    
+    # Extract games mentioned in the summary or from the report
+    games_played = set()
+    for user_data in report['individual_stats'].values():
+        games_played.update(user_data['played'].keys())
+    
+    # Check for collaborative gaming
+    group_games = []
+    if report['group_stats']['games_played_together']:
+        group_games = [game['name'] for game in report['group_stats']['games_played_together']]
+    
+    # Build the image prompt
+    prompt_parts = [
+        "Create a fun, cartoon-style gaming montage illustration showing:",
+        ""
+    ]
+    
+    # Add character descriptions
+    if character_descriptions:
+        prompt_parts.extend([
+            "Characters:",
+            *[f"- {desc}" for desc in character_descriptions],
+            ""
+        ])
+    
+    # Add gaming context
+    if games_played:
+        prompt_parts.extend([
+            f"The characters are playing these games: {', '.join(games_played)}",
+            ""
+        ])
+    
+    # Highlight collaborative gaming
+    if group_games:
+        prompt_parts.extend([
+            f"Especially highlight that they're playing {', '.join(group_games)} together - show them collaborating or having fun together in the game world.",
+            ""
+        ])
+    
+    # Style instructions
+    prompt_parts.extend([
+        "Style: Colorful, energetic cartoon/anime style with gaming elements like controllers, screens, game UI elements, and references to the specific games being played.",
+        "Make it feel celebratory and fun, capturing the excitement of gaming with friends.",
+        "Include gaming-related visual elements like headsets, RGB lighting, multiple monitors, or game-specific imagery.",
+        "The overall mood should be positive and energetic, showing the joy of gaming together."
+    ])
+    
+    return "\n".join(prompt_parts)
+
+def generate_image_with_gemini(prompt: str, api_key: str) -> Optional[bytes]:
+    """Generate an image using Gemini 2.5 Flash Image Preview API."""
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key={api_key}"
+    
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 2048,
+            "responseModalities": ["TEXT", "IMAGE"]
+        }
+    }
+    
+    try:
+        logger.info("Generating image with Gemini 2.0 Flash...")
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        # Check if we got a successful response with image data
+        if 'candidates' in result and len(result['candidates']) > 0:
+            candidate = result['candidates'][0]
+            if 'content' in candidate and 'parts' in candidate['content']:
+                for part in candidate['content']['parts']:
+                    if 'inlineData' in part and 'data' in part['inlineData']:
+                        # The image is base64 encoded
+                        image_data = base64.b64decode(part['inlineData']['data'])
+                        logger.info("Successfully generated image")
+                        return image_data
+        
+        logger.error(f"No image data found in response: {result}")
+        return None
+        
+    except requests.RequestException as e:
+        logger.error(f"Error generating image with Gemini: {e}")
+        if hasattr(e, 'response') and e.response:
+            logger.error(f"Response text: {e.response.text}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error generating image: {e}")
+        return None
+
+def generate_summary_with_image(report: Dict, gemini_api_key: str) -> Tuple[str, Optional[bytes]]:
+    """Generate both text summary and image for the gaming report."""
+    
+    # First generate the text summary
+    text_summary = generate_summary(report, gemini_api_key)
+    
+    # Then generate an image based on the summary and report data
+    image_prompt = create_image_prompt(text_summary, report)
+    logger.info(f"Generated image prompt: {image_prompt}")
+    
+    image_data = generate_image_with_gemini(image_prompt, gemini_api_key)
+    
+    return text_summary, image_data
+
 # Example of how to run it:
 if __name__ == '__main__':
     # Load environment variables from .env file
@@ -165,7 +304,25 @@ if __name__ == '__main__':
         }
         
         # Make sure you have the required libraries installed:
-        # pip install google-generativeai python-dotenv
+        # pip install google-generativeai python-dotenv requests
+        
+        # Test both summary and image generation
+        print("Testing text summary generation...")
         summary = generate_summary(mock_report, GEMINI_API_KEY)
         print("\n--- Generated Summary ---\n")
         print(summary)
+        
+        print("\nTesting text summary + image generation...")
+        summary_with_image, image_data = generate_summary_with_image(mock_report, GEMINI_API_KEY)
+        print("\n--- Generated Summary with Image ---\n")
+        print(summary_with_image)
+        
+        if image_data:
+            print(f"\n--- Generated Image ---")
+            print(f"Image data: {len(image_data)} bytes")
+            # Save the image for inspection
+            with open('test_image.png', 'wb') as f:
+                f.write(image_data)
+            print("Image saved as 'test_image.png'")
+        else:
+            print("No image was generated")

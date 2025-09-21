@@ -7,7 +7,9 @@ A lightweight Python application that fetches daily Steam activity for a small g
 - **Steam Activity Tracking**: Uses Steam Web API to retrieve user activity, games played, and recent playtime
 - **Single-Snapshot Management**: Simplified snapshot system using one file for efficient activity comparison
 - **AI-Powered Summaries**: Natural language summaries generated using Google's Gemini AI
-- **Discord Integration**: Automated posting to Discord via webhooks
+- **AI-Generated Images**: Fun cartoon-style images created with Gemini 2.0 Flash showing gaming activities
+- **Discord Integration**: Automated posting to Discord via webhooks with both text and images
+- **Character Descriptions**: Personalized image generation based on user descriptions
 - **GitHub Actions Deployment**: Automated daily execution with persistent snapshot caching
 - **Optimized Performance**: Focuses on recent activity for more relevant daily digests
 
@@ -22,7 +24,9 @@ A lightweight Python application that fetches daily Steam activity for a small g
    - `USERS`: Comma-separated list of `username:steamid64` pairs
 4. Test your setup: `python main.py test`
 5. Test AI summaries: `python main.py summary`
-6. Run full digest: `python main.py`
+6. Test image generation: `python main.py image`
+7. Test image generation separately: `python test_image_generation.py`
+8. Run full digest: `python main.py`
 
 ## Configuration
 
@@ -31,6 +35,40 @@ The application uses environment variables for configuration. See `.env.example`
 - `GEMINI_API_KEY`: Google Gemini API key
 - `DISCORD_WEBHOOK_URL`: Discord webhook URL
 - `USERS`: Comma-separated list of `username:steamid64` pairs (e.g., `alice:76561198000000000,bob:76561198000000001`)
+
+## AI-Generated Images
+
+The bot now generates fun cartoon-style images alongside text summaries using Gemini 2.0 Flash. 
+
+### Character Descriptions
+
+The current character descriptions are built into the code in `summarise.py`:
+
+- **DonkFresh**: A young skinny guy with a heavy metal t-shirt and long curly hair
+- **BoxFresh**: A muscular British guy who wears cargo joggers and has a short beard  
+- **ViralNinja**: A wide British guy with a gamer hoodie and glasses
+
+To customize these for your group, edit the `CHARACTER_DESCRIPTIONS` dictionary in `summarise.py`.
+
+### Image Features
+
+- **Collaborative Gaming Highlights**: When users play the same game together, the image emphasizes their cooperation
+- **Game-Specific Elements**: Images include visual references to the games being played
+- **Fun Art Style**: Colorful, energetic cartoon/anime style with gaming elements
+- **Automatic Integration**: Images are generated and posted to Discord automatically with each digest
+
+### Testing Image Generation
+
+```bash
+# Test image generation with mock data
+python test_image_generation.py
+
+# Test with real Steam data (but don't post to Discord)
+python main.py image
+
+# Run full digest with both text and images
+python main.py
+```
 
 ## Deployment
 
@@ -41,7 +79,7 @@ The bot is designed to run automatically via GitHub Actions:
 1. **Fork this repository**
 2. **Set up GitHub Secrets** in your repository settings:
    - `STEAM_API_KEY`
-   - `KLUSTER_API_KEY`
+   - `GEMINI_API_KEY`
    - `DISCORD_WEBHOOK_URL`
    - `USERS`
 3. **Enable GitHub Actions** in your repository
