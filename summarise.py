@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 CHARACTER_DESCRIPTIONS = {
     "DonkFresh": "a young skinny guy with a heavy metal t-shirt and long curly hair",
     "BoxFresh": "a muscular British guy who wears cargo joggers and has a short beard", 
-    "ViralNinja": "a wide British guy with a gamer hoodie and glasses"
+    "ViralNinja": "a wide British guy with a gamer hoodie and glasses",
+    "GoplanaQueen": "a busty Polish woman with blonde hair"
 }
 
 # The system prompt remains the same, it's excellent!
