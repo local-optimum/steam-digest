@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 CHARACTER_DESCRIPTIONS = {
     "DonkFresh": "a young skinny guy with a heavy metal t-shirt and long curly hair",
     "BoxFresh": "a muscular British guy who wears cargo joggers and has a short beard", 
-    "ViralNinja": "a wide British guy with a gamer hoodie and glasses",
+    "ViralNinja": "a big British guy with a gamer hoodie and glasses",
     "GoplanaQueen": "a busty Polish woman with blonde hair"
 }
 
@@ -229,7 +229,7 @@ def generate_image_with_gemini(prompt: str, api_key: str) -> Optional[bytes]:
             {
                 "parts": [
                     {
-                        "text": prompt
+                        "text": f"Generate an image based on this prompt: {prompt}"
                     }
                 ]
             }
@@ -237,13 +237,13 @@ def generate_image_with_gemini(prompt: str, api_key: str) -> Optional[bytes]:
         "generationConfig": {
             "temperature": 0.7,
             "maxOutputTokens": 2048,
-            "responseModalities": ["TEXT", "IMAGE"]
+            "responseModalities": ["IMAGE"]
         }
     }
     
     try:
         logger.info("Generating image with Gemini 2.0 Flash...")
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
         response.raise_for_status()
         
         result = response.json()
