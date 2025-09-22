@@ -200,3 +200,9 @@ snapshots/yesterday.json
 # Project-specific
 snapshots/
 *.log
+
+# Test generated files
+test_*.png
+test_image.png
+test_generated_image.png
+test_module_image.png
