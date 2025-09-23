@@ -206,7 +206,7 @@ def create_image_prompt(text_summary: str, report: Dict) -> str:
     
     # Style instructions
     prompt_parts.extend([
-        "Style: Action movie montage with multiple dynamic scenes, cinematic lighting, and heroic poses.",
+        "Style: 90s action movie style poster montage with multiple dynamic scenes, cinematic lighting, and heroic poses.",
         "Each scene should authentically represent the specific game world with recognizable elements, environments, and visual style.",
         "Show the characters as cool, heroic versions of themselves, maintaining their friendship while looking legendary.",
         "Use dramatic lighting, particle effects, and dynamic composition to make each scene feel epic and larger-than-life.",
