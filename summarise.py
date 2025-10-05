@@ -74,9 +74,9 @@ def generate_summary(report: Dict, api_key: str) -> str:
         genai.configure(api_key=api_key)
         
         # Set up the model with the system prompt and generation config
-        # Using gemini-1.5-flash-latest is a great choice for speed and cost-effectiveness
+        # Using gemini-2.0-flash-exp is the current supported model for speed and cost-effectiveness
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest',
+            model_name='gemini-2.0-flash-exp',
             system_instruction=SYSTEM_PROMPT,
         )
         
@@ -206,7 +206,7 @@ def create_image_prompt(text_summary: str, report: Dict) -> str:
     
     # Style instructions
     prompt_parts.extend([
-        "Style: 90s action movie style poster montage with multiple dynamic scenes, cinematic lighting, and heroic poses.",
+        "Style: A montage of game actions shots in the style and aethetic of the games being played, featuring appropriately stylised representations of the characters who have taken part in each game.",
         "Each scene should authentically represent the specific game world with recognizable elements, environments, and visual style.",
         "Show the characters as cool, heroic versions of themselves, maintaining their friendship while looking legendary.",
         "Use dramatic lighting, particle effects, and dynamic composition to make each scene feel epic and larger-than-life.",
