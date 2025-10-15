@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 # Character descriptions for image generation
 CHARACTER_DESCRIPTIONS = {
     "DonkFresh": "a young skinny guy with a heavy metal t-shirt and long curly hair",
-    "BoxFresh": "a muscular British guy who wears cargo joggers and has a short beard", 
-    "ViralNinja": "a big British guy with a gamer hoodie and glasses",
+    "BoxFresh": "a British guy who wears cargo joggers, a blue half zip top and has a short beard", 
+    "ViralNinja": "a British guy with an anime gamer hoodie and glasses",
     "GoplanaQueen": "a busty Polish woman with blonde hair"
 }
 
@@ -26,11 +26,11 @@ SYSTEM_PROMPT = """You are a top gaming streamer that summarizes daily gaming ac
 Your summaries should be:
 - Discord-friendly (under 2000 characters)
 - Casual and fun in tone
-- Tailored to the specific games being played
+- Tailored to the specific games being played with fun jokes and factoids
 - Include gaming emojis where appropriate
-- Highlight interesting patterns or achievements
+- Highlight interesting patterns
 - Mention and celebrate collaborative gaming when it happens
-- Keep it concise but engaging
+- Keep it concise but engaging with edgey humour
 
 Focus on the most interesting aspects of the day's gaming session."""
 
@@ -39,12 +39,12 @@ def format_report_for_ai(report: Dict) -> str:
     if not report['has_activity']:
         return "No gaming activity detected for today."
     
-    # This function is perfect as is.
     summary_data = {
         'individual_activity': {},
         'group_highlights': {}
     }
     
+    # Add individual activity data
     for username, user_data in report['individual_stats'].items():
         if user_data['total_minutes'] > 0:
             summary_data['individual_activity'][username] = {
@@ -53,6 +53,29 @@ def format_report_for_ai(report: Dict) -> str:
                 'new_games': user_data['new_games'],
                 'first_time_played': user_data['first_time_played']
             }
+    
+    # Add group highlights including collaborative gaming
+    group_stats = report['group_stats']
+    if group_stats['games_played_together']:
+        summary_data['group_highlights']['games_played_together'] = [
+            {
+                'game_name': game['name'],
+                'players': game['players'],
+                'total_minutes': game['total_minutes']
+            }
+            for game in group_stats['games_played_together']
+        ]
+    
+    # Add other group highlights
+    if group_stats['most_played_game']:
+        summary_data['group_highlights']['most_played_game'] = {
+            'name': group_stats['most_played_game']['name'],
+            'total_minutes': group_stats['most_played_game']['total_minutes'],
+            'players': group_stats['most_played_game']['players']
+        }
+    
+    if group_stats['total_group_minutes'] > 0:
+        summary_data['group_highlights']['total_group_minutes'] = group_stats['total_group_minutes']
     
     return json.dumps(summary_data, indent=2)
 
@@ -166,17 +189,14 @@ def create_image_prompt(text_summary: str, report: Dict) -> str:
     group_scenes = []
     if report['group_stats']['games_played_together']:
         for game_info in report['group_stats']['games_played_together']:
-            # Find who played this game
-            players_in_game = []
-            for player, data in report['individual_stats'].items():
-                if game_info['name'] in data['played']:
-                    players_in_game.append(player)
+            # Use the players list that's already in the game_info
+            players_in_game = game_info['players']
             if len(players_in_game) > 1:
                 group_scenes.append(f"{', '.join(players_in_game)} together in {game_info['name']}")
     
     # Build the image prompt
     prompt_parts = [
-        "Create an epic action movie montage showing multiple cinematic scenes based on the games being played:",
+        "Create a dynamic manga-style montage in the style of 90s anime like Initial D, showing multiple scenes based on the games being played:",
         ""
     ]
     
@@ -191,26 +211,27 @@ def create_image_prompt(text_summary: str, report: Dict) -> str:
     # Add individual game scenes
     if game_scenes:
         prompt_parts.extend([
-            "Action Scenes to Include:",
-            *[f"- Epic scene: {scene}, showing the character as a heroic legend in that game's world" for scene in game_scenes[:6]],  # Limit to avoid overly long prompts
+            "Dynamic Scenes to Include:",
+            *[f"- Dynamic scene: {scene}, showing the character in an energetic pose reflecting the game's aesthetic" for scene in game_scenes[:6]],  # Limit to avoid overly long prompts
             ""
         ])
     
     # Highlight collaborative scenes
     if group_scenes:
         prompt_parts.extend([
-            "Team-Up Scenes:",
-            *[f"- {scene}, working as legendary heroes with perfect coordination" for scene in group_scenes],
+            "Friendship & Collaboration Scenes:",
+            *[f"- {scene}, working together with determination and friendship, overcoming challenges" for scene in group_scenes],
             ""
         ])
     
     # Style instructions
     prompt_parts.extend([
-        "Style: A montage of game actions shots in the style and aethetic of the games being played, featuring appropriately stylised representations of the characters who have taken part in each game.",
-        "Each scene should authentically represent the specific game world with recognizable elements, environments, and visual style.",
-        "Show the characters as cool, heroic versions of themselves, maintaining their friendship while looking legendary.",
-        "Use dramatic lighting, particle effects, and dynamic composition to make each scene feel epic and larger-than-life.",
-        "The overall mood: friends who are legendary heroes having the ultimate gaming adventure across multiple worlds."
+        "Style: 90s anime aesthetic like Initial D - colorful, cartoony, and dynamic with manga-style linework and cel-shaded coloring.",
+        "Each scene should authentically represent the specific game world with recognizable elements, environments, and visual style, but rendered in the 90s anime aesthetic.",
+        "Show the characters as dynamic, determined versions of themselves, maintaining their friendship and collaborative spirit while overcoming odds together.",
+        "Use vibrant colors, speed lines, motion blur effects, and dynamic composition typical of 90s anime racing and action scenes.",
+        "Include elements like dramatic wind effects, energy auras, and dynamic poses that convey movement and determination.",
+        "The overall mood: friends working together with the spirit of collaboration, determination, and overcoming challenges - like a 90s anime montage of heroes pushing their limits."
     ])
     
     return "\n".join(prompt_parts)
