@@ -17,12 +17,18 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
-        cache: 'pip'
+        # Temporarily remove pip cache to avoid restoring a stale cache that may omit dependencies
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
+    
+    - name: Verify packaging install
+      run: |
+        python -c "import sys; print('python:', sys.executable)"
+        python -c "import packaging; print('packaging OK', packaging.version)"
+        python -m pip list
     
     - name: Create snapshots directory
       run: mkdir -p snapshots
